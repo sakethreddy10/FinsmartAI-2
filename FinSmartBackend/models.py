@@ -26,6 +26,7 @@ class AnalysisResponse(BaseModel):
     company: str = Field(..., description="Company ticker analyzed")
     analysis: str = Field(..., description="Full analysis report in markdown")
     timestamp: str = Field(..., description="Analysis timestamp")
+    chart_data: Optional[dict] = Field(None, description="Structured data for frontend chart visualizations")
     
     class Config:
         json_schema_extra = {
@@ -33,7 +34,8 @@ class AnalysisResponse(BaseModel):
                 "status": "success",
                 "company": "INFY.NS",
                 "analysis": "# Investment Analysis Report...",
-                "timestamp": "2026-02-11T21:53:00+05:30"
+                "timestamp": "2026-02-11T21:53:00+05:30",
+                "chart_data": None
             }
         }
 

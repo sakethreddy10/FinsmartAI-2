@@ -1,9 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Radar, Doughnut, Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, RadialLinearScale, ArcElement, PointElement, LineElement, Filler, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import {
   Search, BarChart3, AlertTriangle, ChevronRight,
-  Cpu, FileText, LineChart, ShieldCheck, Clock, TrendingUp
+  Cpu, FileText, LineChart as LineChartIcon, ShieldCheck, Clock, TrendingUp, Target, Gauge
 } from 'lucide-react';
+
+ChartJS.register(RadialLinearScale, ArcElement, PointElement, LineElement, Filler, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
 const POPULAR_STOCKS = [
   { symbol: 'RELIANCE.NS',  name: 'Reliance Industries',       market: '🇮🇳 NSE' },
@@ -28,6 +33,102 @@ const STEPS = [
   { label: 'Qualitative Review', icon: FileText,  desc: 'Analyzing earnings & transcripts' },
   { label: 'AI Synthesis',       icon: Cpu,       desc: 'Generating investment thesis' },
 ];
+
+const RATING_COLORS = { BUY: '#22d47e', HOLD: '#f5a623', SELL: '#f05a5a' };
+const RISK_COLORS = { Low: '#22d47e', Medium: '#f5a623', High: '#f05a5a' };
+
+function ScoreRadarChart({ scores }) {
+  if (!scores) return null;
+  const labels = Object.keys(scores).map(k => k.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()));
+  const values = Object.values(scores);
+  return (
+    <div style={{ maxWidth: 300, margin: '0 auto' }}>
+      <Radar data={{
+        labels,
+        datasets: [{ label: 'Score', data: values, backgroundColor: 'rgba(0,200,150,0.15)', borderColor: '#00c896', borderWidth: 2, pointBackgroundColor: '#00c896', pointRadius: 4 }]
+      }} options={{ scales: { r: { beginAtZero: true, max: 100, ticks: { stepSize: 20, color: '#8aa094', backdropColor: 'transparent' }, grid: { color: 'rgba(255,255,255,0.06)' }, pointLabels: { color: '#e8f0eb', font: { size: 11 } } } }, plugins: { legend: { display: false } }, maintainAspectRatio: true }} />
+    </div>
+  );
+}
+
+function MetricsBarChart({ metrics }) {
+  if (!metrics) return null;
+  const display = {
+    'P/E': metrics.pe_ratio, 'P/S': metrics.ps_ratio, 'P/B': metrics.pb_ratio,
+    'ROE%': metrics.roe, 'Gross%': metrics.gross_margin, 'Net%': metrics.net_margin
+  };
+  const labels = Object.keys(display);
+  const values = Object.values(display).map(v => v || 0);
+  return (
+    <Bar data={{
+      labels,
+      datasets: [{ label: 'Value', data: values, backgroundColor: ['#4b9aff','#9f82f0','#00c896','#22d47e','#e8a93a','#f05a5a'], borderRadius: 6, borderSkipped: false }]
+    }} options={{ plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#8aa094' }, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { ticks: { color: '#e8f0eb' }, grid: { display: false } } }, maintainAspectRatio: true }} />
+  );
+}
+
+function RatingBadge({ recommendation, confidence }) {
+  const color = RATING_COLORS[recommendation?.toUpperCase()] || '#f5a623';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem', background: `${color}12`, border: `1px solid ${color}30`, borderRadius: 'var(--r-xl)' }}>
+      <div style={{ width: 56, height: 56, borderRadius: '50%', background: `${color}20`, border: `3px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 800, color }}>
+        {recommendation?.toUpperCase()?.charAt(0) || '?'}
+      </div>
+      <div>
+        <div style={{ fontSize: '1.3rem', fontWeight: 800, color, letterSpacing: '-0.02em' }}>{recommendation?.toUpperCase() || 'N/A'}</div>
+        {confidence && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Confidence: {confidence}%</div>}
+      </div>
+    </div>
+  );
+}
+
+function ChartDashboard({ chartData }) {
+  if (!chartData) return null;
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+      {/* Rating Card */}
+      <div style={{ background: 'var(--ink-1)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-xl)', padding: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+          <Target size={16} color="var(--emerald)" />
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Recommendation</span>
+        </div>
+        <RatingBadge recommendation={chartData.recommendation} confidence={chartData.confidence} />
+        {chartData.currentPrice && chartData.targetPrice && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', padding: '0.75rem', background: 'var(--ink-2)', borderRadius: 'var(--r-md)', fontSize: '0.85rem' }}>
+            <div><span style={{ color: 'var(--text-muted)' }}>Current:</span> <strong style={{ color: 'var(--text-primary)' }}>${chartData.currentPrice}</strong></div>
+            <div><span style={{ color: 'var(--text-muted)' }}>Target:</span> <strong style={{ color: 'var(--emerald)' }}>${chartData.targetPrice}</strong></div>
+            <div style={{ color: chartData.targetPrice > chartData.currentPrice ? 'var(--bull)' : 'var(--bear)', fontWeight: 700 }}>
+              {((chartData.targetPrice - chartData.currentPrice) / chartData.currentPrice * 100).toFixed(1)}%
+            </div>
+          </div>
+        )}
+      </div>
+      {/* Radar Chart */}
+      {chartData.scores && (
+        <div style={{ background: 'var(--ink-1)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-xl)', padding: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <Gauge size={16} color="var(--violet)" />
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Analysis Scores</span>
+          </div>
+          <ScoreRadarChart scores={chartData.scores} />
+        </div>
+      )}
+      {/* Metrics Bar Chart */}
+      {chartData.metrics && (
+        <div style={{ background: 'var(--ink-1)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-xl)', padding: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <BarChart3 size={16} color="var(--blue-400)" />
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Key Metrics</span>
+          </div>
+          <MetricsBarChart metrics={chartData.metrics} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
 
 function parseSections(text) {
   if (!text || text.length < 200) return null;
@@ -321,6 +422,9 @@ export default function StockAnalyzer() {
             </div>
           </div>
 
+          {/* Chart Visualizations */}
+          <ChartDashboard chartData={result.chart_data} />
+
           {/* Sections */}
           {sections ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
@@ -342,14 +446,14 @@ export default function StockAnalyzer() {
                     <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, letterSpacing: '-0.02em' }}>{sec.title}</h3>
                   </div>
                   <div className="report-md">
-                    <ReactMarkdown>{sec.content}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{sec.content}</ReactMarkdown>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <div style={{ background: 'var(--ink-1)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-xl)', padding: '2rem' }}>
-              <div className="report-md"><ReactMarkdown>{result.analysis}</ReactMarkdown></div>
+              <div className="report-md"><ReactMarkdown remarkPlugins={[remarkGfm]}>{result.analysis}</ReactMarkdown></div>
             </div>
           )}
         </div>
@@ -361,15 +465,48 @@ export default function StockAnalyzer() {
         .report-md h1:first-child, .report-md h2:first-child { margin-top: 0; }
         .report-md h3 { font-size: 0.975rem; color: var(--text-primary); margin: 1.25rem 0 0.5rem; font-weight: 600; }
         .report-md p { margin-bottom: 1rem; }
-        .report-md strong { color: var(--blue-400); font-weight: 600; }
+        .report-md strong { color: var(--emerald); font-weight: 600; }
         .report-md ul, .report-md ol { padding-left: 1.25rem; margin-bottom: 1rem; }
         .report-md li { margin-bottom: 0.4rem; }
-        .report-md li::marker { color: var(--blue-400); }
-        .report-md table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.865rem; border-radius: var(--r-md); overflow: hidden; }
-        .report-md th { background: rgba(75,122,255,0.07); color: var(--blue-400); font-weight: 700; text-align: left; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-1); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
-        .report-md td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-1); background: var(--ink-2); font-family: var(--font-mono); font-size: 0.85rem; }
+        .report-md li::marker { color: var(--emerald); }
+
+        /* Table wrapper for horizontal scroll on small screens */
+        .report-md table {
+          width: 100%;
+          border-collapse: separate;
+          border-spacing: 0;
+          margin: 1.25rem 0;
+          font-size: 0.865rem;
+          border-radius: var(--r-lg);
+          overflow: hidden;
+          border: 1px solid var(--border-2);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .report-md th {
+          background: linear-gradient(135deg, rgba(0,200,150,0.1), rgba(0,200,150,0.05));
+          color: var(--emerald);
+          font-weight: 700;
+          text-align: left;
+          padding: 0.85rem 1.1rem;
+          border-bottom: 2px solid var(--border-2);
+          font-size: 0.78rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          white-space: nowrap;
+        }
+        .report-md td {
+          padding: 0.75rem 1.1rem;
+          border-bottom: 1px solid var(--border-1);
+          font-family: var(--font-mono);
+          font-size: 0.85rem;
+          color: var(--text-primary);
+          transition: background 0.15s;
+        }
+        .report-md tr:nth-child(even) td { background: var(--ink-2); }
+        .report-md tr:nth-child(odd) td { background: transparent; }
         .report-md tr:last-child td { border-bottom: none; }
         .report-md tr:hover td { background: var(--ink-3); }
+
         .report-md blockquote { border-left: 3px solid var(--violet-400); padding: 0.875rem 1.25rem; margin: 1.25rem 0; background: var(--violet-glow-soft); border-radius: 0 var(--r-md) var(--r-md) 0; font-style: italic; color: var(--text-secondary); }
         .report-md code { background: var(--ink-3); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.85em; color: var(--amber-400); font-family: var(--font-mono); }
         .report-md pre { background: var(--ink-0); padding: 1.25rem; border-radius: var(--r-lg); overflow-x: auto; margin: 1.25rem 0; border: 1px solid var(--border-1); }

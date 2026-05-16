@@ -66,7 +66,8 @@ async def finance_query_stream(request: FinanceQueryRequest):
     Yields chunks as Server-Sent Events: data: <chunk>\n\n
     The original /query endpoint is completely unaffected.
     """
-    def generate():
+    async def generate():
+        import asyncio
         try:
             client = _get_stream_client()
             stream = client.chat.completions.create(
@@ -100,6 +101,7 @@ async def finance_query_stream(request: FinanceQueryRequest):
                 if delta and delta.content:
                     # Send chunk as SSE event
                     yield f"data: {json.dumps({'chunk': delta.content})}\n\n"
+                    await asyncio.sleep(0) # Flush to client immediately
             # Signal stream end
             yield "data: [DONE]\n\n"
         except Exception as e:

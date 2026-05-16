@@ -28,7 +28,7 @@ llm = LLM(
     base_url="https://integrate.api.nvidia.com/v1",
     api_key=os.getenv("NVIDIA_API_KEY"),
     temperature=0.5,  # Lower temp for more focused, faster responses
-    max_tokens=3000   # Reduced from 4096 to speed up generation
+    max_tokens=4096   # Full tokens for comprehensive reports with tables
 )
 
 

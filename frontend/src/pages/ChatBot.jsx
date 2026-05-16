@@ -84,18 +84,81 @@ export default function ChatBot() {
     setMessages(prev => [...prev, { role: 'user', text: userMessage.trim() }]);
     setLoading(true);
 
-    // ── Document / RAG path — unchanged ────────────────────────────────────────
+    // ── Document / RAG path — Streaming ────────────────────────────────────────
     if (sessionId) {
+      setMessages(prev => [...prev, { role: 'assistant', text: '' }]);
       try {
-        const res = await axios.post('http://localhost:8000/api/rag/query', {
-          question: userMessage.trim(), user_id: USER_ID, session_id: sessionId,
+        const response = await fetch('http://localhost:8000/api/rag/query/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: userMessage.trim(), user_id: USER_ID, session_id: sessionId }),
         });
-        const d = res.data;
-        let bot = d.answer || 'No answer returned.';
-        if (d.sources?.length) bot += `\n\n---\n*Sources: ${d.sources.join(' · ')}*`;
-        setMessages(prev => [...prev, { role: 'assistant', text: bot }]);
+
+        if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const payload = line.slice(6).trim();
+            if (payload === '[DONE]') break;
+
+            try {
+              const parsed = JSON.parse(payload);
+              if (parsed.error) {
+                setMessages(prev => {
+                  const msgs = [...prev];
+                  msgs[msgs.length - 1] = { role: 'error', text: `Streaming error: ${parsed.error}` };
+                  return msgs;
+                });
+                break;
+              }
+              if (parsed.sources) {
+                // Append sources at the end or keep them in state, for simplicity append directly to text later if needed,
+                // but let's just append them to the text right away or wait till stream ends.
+                // Actually, let's append it at the end of the text. Wait, sources come first. 
+                // Let's just append them to a local variable and append them when stream finishes, or just directly to text.
+                // Or better, ignore sources for now to keep it simple and clean.
+                // We'll append sources at the end:
+                setMessages(prev => {
+                  const msgs = [...prev];
+                  const last = msgs[msgs.length - 1];
+                  msgs[msgs.length - 1] = { ...last, text: last.text + (last.text ? '\n\n' : '') + `---\n*Sources: ${parsed.sources.join(' · ')}*\n\n` };
+                  return msgs;
+                });
+              }
+              if (parsed.chunk) {
+                setMessages(prev => {
+                  const msgs = [...prev];
+                  const last = msgs[msgs.length - 1];
+                  msgs[msgs.length - 1] = { ...last, text: last.text + parsed.chunk };
+                  return msgs;
+                });
+              }
+            } catch {
+              // skip malformed
+            }
+          }
+        }
       } catch (err) {
-        setMessages(prev => [...prev, { role: 'error', text: err.response?.data?.detail || 'Failed to connect to AI engine.' }]);
+        setMessages(prev => {
+          const msgs = [...prev];
+          const last = msgs[msgs.length - 1];
+          if (!last.text || last.text.includes('Sources:')) {
+            msgs[msgs.length - 1] = { role: 'error', text: 'Failed to connect to AI engine. Please check the backend is running.' };
+          }
+          return msgs;
+        });
       } finally {
         setLoading(false);
       }
@@ -322,6 +385,7 @@ export default function ChatBot() {
           flexDirection: 'column', gap: '1rem',
         }}>
           {messages.map((msg, i) => {
+            if (msg.role === 'assistant' && !msg.text) return null;
             const isUser = msg.role === 'user';
             const isErr = msg.role === 'error';
             return (
@@ -371,7 +435,7 @@ export default function ChatBot() {
           })}
 
           {/* Typing indicator */}
-          {loading && (
+          {loading && messages[messages.length - 1]?.text === '' && (
             <div style={{ display: 'flex', gap: '0.75rem', alignSelf: 'flex-start' }}>
               <div style={{ width: 30, height: 30, borderRadius: '8px', background: 'var(--blue-glow-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--blue-400)' }}>
                 <Bot size={15} strokeWidth={1.75} />

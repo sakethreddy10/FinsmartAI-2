@@ -140,70 +140,132 @@ class StockAnalysisTasks():
 
   def recommend(self, agent):
     return Task(description=dedent(f"""
-        Create a PROFESSIONAL INVESTMENT REPORT with comprehensive numerical data.
+        Create a DETAILED, COMPREHENSIVE PROFESSIONAL INVESTMENT REPORT with rich numerical data and analysis.
+        This should be a premium-quality report worthy of a Wall Street analyst.
         
         IMPORTANT: Use the data and context from the PREVIOUS tasks (research, financial analysis, filings).
         Only make additional tool calls if absolutely critical data is missing.
         
-        Your report MUST include these sections with EXACT NUMBERS:
+        Your report MUST include ALL of these sections with EXACT NUMBERS and DETAILED ANALYSIS:
         
         ## 1. Executive Summary & Rating
-        - Clear BUY/HOLD/SELL recommendation
-        - Target Price (12-month) with upside/downside %
-        - Risk Rating (Low/Medium/High)
+        - Clear BUY/HOLD/SELL recommendation with confidence level
+        - Current Price and Target Price (12-month) with upside/downside %
+        - Risk Rating (Low/Medium/High) with justification
+        - One-paragraph investment thesis summary
         
-        ## 2. Valuation Summary Table
-        | Metric | Current Value | Assessment |
-        |--------|---------------|------------|
-        | P/E Ratio | X | Overvalued/Fair/Undervalued |
-        | P/S Ratio | X | ... |
-        | P/B Ratio | X | ... |
-        | EV/EBITDA | X | ... |
+        ## 2. Company Overview
+        - Brief description of what the company does
+        - Key products/services and revenue segments
+        - Market position and competitive advantages (moat)
+        - Industry and sector classification
         
-        ## 3. Financial Performance Metrics
-        - Revenue Growth: X%
-        - Earnings Growth: X%
-        - Gross Margin: X%
-        - Net Margin: X%
+        ## 3. Valuation Summary
         
-        ## 4. Profitability & Returns
-        - ROE: X%
-        - Operating Margin: X%
+        | Metric | Current Value | Industry Avg | Assessment |
+        |--------|---------------|--------------|------------|
+        | P/E Ratio | X | Y | Overvalued/Fair/Undervalued |
+        | P/S Ratio | X | Y | ... |
+        | P/B Ratio | X | Y | ... |
+        | EV/EBITDA | X | Y | ... |
+        | P/FCF | X | Y | ... |
+        
+        ## 4. Financial Performance
+        
+        | Metric | Value | YoY Change |
+        |--------|-------|------------|
+        | Revenue | $X | +X% |
+        | Net Income | $X | +X% |
+        | Gross Margin | X% | +X bps |
+        | Operating Margin | X% | +X bps |
+        | Net Margin | X% | +X bps |
+        | ROE | X% | ... |
+        | ROA | X% | ... |
         
         ## 5. Financial Health Scorecard
+        
         | Metric | Value | Status |
         |--------|-------|--------|
-        | Current Ratio | X | Healthy/Warning |
+        | Current Ratio | X | Healthy/Warning/Critical |
+        | Quick Ratio | X | ... |
         | Debt/Equity | X | ... |
+        | Interest Coverage | X | ... |
+        | Free Cash Flow | $X | ... |
         
         ## 6. Growth Analysis
-        - Revenue CAGR (3Y, 5Y)
-        - Earnings CAGR (3Y, 5Y)
-        - FCF Growth rate
+        - Revenue Growth: Quarterly and Annual trends
+        - Earnings Growth: Recent quarters performance
+        - Provide specific numbers for recent 4 quarters if available
+        - Future growth catalysts and projections
         
-        ## 7. Insider Activity & Ownership
-        - Insider buying/selling (₹ value, % of holdings)
-        - Top 5 institutional holders (% ownership)
+        ## 7. Insider Activity & Institutional Ownership
+        - Recent insider buying/selling activity with amounts
+        - Top institutional holders with % ownership
+        - Any notable changes in institutional positions
         
-        ## 8. Price Targets & Catalysts
-        - Analyst consensus (High/Low/Mean)
-        - Upcoming earnings date
-        - Key catalysts (positive and negative)
+        ## 8. Market Sentiment & News Impact
+        - Summary of recent news sentiment (Bullish/Bearish/Neutral)
+        - Key recent developments affecting the stock
+        - Analyst consensus and price targets (High/Low/Mean)
         
-        ## 9. Risk Factors (with impact level)
-        - List 3-5 key risks with High/Medium/Low impact
+        ## 9. Risk Assessment
         
-        ## 10. Investment Thesis
-        - Clear reasons to BUY/HOLD/SELL with supporting data
+        | Risk Factor | Impact Level | Likelihood | Details |
+        |-------------|-------------|------------|---------|
+        | Risk 1 | High/Med/Low | High/Med/Low | Brief description |
+        | Risk 2 | ... | ... | ... |
+        (List 4-6 key risks)
         
-        Format EVERYTHING cleanly.
+        ## 10. Investment Thesis & Recommendation
+        - Detailed bull case (3-4 points with supporting data)
+        - Detailed bear case (2-3 points with supporting data)
+        - Final recommendation with clear reasoning
+        - Suggested position sizing (conservative/moderate/aggressive)
         
-        IMPORTANT RULES:
-        1. DO NOT include a main title like "## Investment Recommendation" at the beginning. Just jump straight into "## 1. Executive Summary".
-        2. DO NOT assume a company has no data just because it's private. Search extensively. If traditional metrics are unavailable, provide a qualitative business overview, private valuation estimates, and a qualitative recommendation rather than breaking the tables.
-        3. ALWAYS format markdown tables correctly with PROPER NEWLINES. Each row of a table MUST be on a new line. Do NOT combine table rows into a single continuous line.
-        4. ALWAYS use actual numbers if available.
-        5. In the Investment Thesis section, simply provide the bullet points. DO NOT output the literal text "(3-5 bullet points)".
+        ---
+        
+        AFTER the report, you MUST include a data section wrapped in triple backticks with the label "chartdata".
+        This data will be used for visualizations. Format it EXACTLY like this:
+        
+        ```chartdata
+        {{{{
+          "recommendation": "BUY",
+          "confidence": 78,
+          "currentPrice": 150.25,
+          "targetPrice": 185.00,
+          "riskLevel": "Medium",
+          "scores": {{{{
+            "valuation": 72,
+            "growth": 85,
+            "profitability": 80,
+            "financial_health": 75,
+            "momentum": 68
+          }}}},
+          "metrics": {{{{
+            "pe_ratio": 25.4,
+            "ps_ratio": 8.2,
+            "pb_ratio": 12.1,
+            "roe": 35.2,
+            "gross_margin": 45.8,
+            "operating_margin": 30.1,
+            "net_margin": 25.5,
+            "current_ratio": 1.8,
+            "debt_equity": 1.2,
+            "revenue_growth": 12.5,
+            "earnings_growth": 15.3
+          }}}}
+        }}}}
+        ```
+        
+        Replace all values with ACTUAL data for the company. Use reasonable estimates if exact data is unavailable.
+        
+        FORMATTING RULES:
+        1. DO NOT include a main title like "## Investment Recommendation" at the beginning. Start with "## 1. Executive Summary & Rating".
+        2. ALWAYS format markdown tables with PROPER NEWLINES. Each row MUST be on its own line. NEVER combine rows.
+        3. ALWAYS use actual numbers. Do NOT use placeholders like "X" in the final output.
+        4. Make the report DETAILED and COMPREHENSIVE — at least 1500 words of analysis.
+        5. Use bold text for key numbers and important findings.
+        6. Include specific data points, not generic statements.
         
         EFFICIENCY RULES:
         - Use at most 2-3 tool calls total
@@ -212,7 +274,7 @@ class StockAnalysisTasks():
 
         {self.__tip_section()}
       """),
-      expected_output="A professional investment report with comprehensive tables, metrics, ratios, and data-driven recommendations in MARKDOWN format.",
+      expected_output="A comprehensive, detailed professional investment report with rich tables, metrics, chart data, and data-driven recommendations in MARKDOWN format, followed by a chartdata JSON block.",
       tools=[
         calculate,
         get_key_financial_ratios,

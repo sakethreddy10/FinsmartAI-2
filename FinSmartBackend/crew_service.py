@@ -1,8 +1,10 @@
 """Crew service wrapper for stock analysis"""
 import sys
 import os
+import re
 import asyncio
 import logging
+import json
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
@@ -20,6 +22,97 @@ _crew_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="crew")
 
 # Maximum time to wait for crew analysis (seconds)
 CREW_TIMEOUT = 300  # 5 minutes max
+
+
+def _extract_chart_data(text: str) -> tuple:
+    """Extract chartdata JSON block from the analysis text.
+    
+    Returns:
+        tuple: (cleaned_text, chart_data_dict_or_None)
+    """
+    chart_data = None
+    cleaned_text = text
+    
+    # Look for ```chartdata ... ``` block
+    pattern = r'```chartdata\s*\n(.*?)\n\s*```'
+    match = re.search(pattern, text, re.DOTALL)
+    
+    if match:
+        json_str = match.group(1).strip()
+        try:
+            chart_data = json.loads(json_str)
+            logger.info(f"Successfully extracted chart data: {list(chart_data.keys())}")
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse chartdata JSON: {e}")
+            # Try to fix common JSON issues (trailing commas, etc.)
+            try:
+                # Remove trailing commas before closing braces
+                fixed = re.sub(r',\s*}', '}', json_str)
+                fixed = re.sub(r',\s*]', ']', fixed)
+                chart_data = json.loads(fixed)
+                logger.info("Parsed chart data after fixing JSON")
+            except:
+                logger.warning("Could not parse chart data even after fixing")
+        
+        # Remove the chartdata block from the analysis text
+        cleaned_text = text[:match.start()].rstrip() + text[match.end():].lstrip()
+    
+    return cleaned_text, chart_data
+
+
+def _normalize_markdown_tables(text: str) -> str:
+    """Fix common markdown table formatting issues from LLM output.
+    
+    - Ensures table rows are on separate lines
+    - Fixes missing separator rows
+    - Normalizes pipe alignment
+    """
+    if not text:
+        return text
+    
+    lines = text.split('\n')
+    result = []
+    for line in lines:
+        stripped = line.strip()
+        # A concatenated table line: starts & ends with |, has many pipes
+        if stripped.startswith('|') and stripped.endswith('|') and stripped.count('|') > 5:
+            # Split on the pattern where a row ends and another begins: "| |"
+            # We look for | followed by whitespace then | (without content between)
+            parts = re.split(r'\|\s*\|', stripped)
+            if len(parts) > 2:
+                rows = []
+                for i, part in enumerate(parts):
+                    part = part.strip()
+                    if not part:
+                        continue
+                    if not part.startswith('|'):
+                        part = '| ' + part
+                    if not part.endswith('|'):
+                        part = part + ' |'
+                    rows.append(part)
+                if len(rows) > 1:
+                    result.extend(rows)
+                    continue
+        result.append(line)
+        
+    # Second pass: remove rows where any cell is "N/A"
+    final_result = []
+    for line in result:
+        stripped = line.strip()
+        if stripped.startswith('|') and stripped.endswith('|'):
+            # Don't filter out markdown separator rows like |---|---|
+            chars = set(stripped.replace('|', '').replace(' ', ''))
+            if chars == {'-'} or not chars:
+                final_result.append(line)
+                continue
+                
+            cells = [c.strip().upper() for c in stripped.split('|')[1:-1]]
+            if any(c in ['N/A', 'NA', 'NONE', 'NULL', '-'] for c in cells):
+                continue  # Skip this row entirely
+                
+        final_result.append(line)
+        
+    return '\n'.join(final_result)
 
 
 class CrewService:
@@ -119,15 +212,26 @@ class CrewService:
                     analysis_text = result.raw
                 else:
                     analysis_text = str(result)
-                
-            logger.info(f"Final analysis length: {len(analysis_text)} chars")
             
-            return {
+            # Normalize markdown tables to fix formatting issues
+            analysis_text = _normalize_markdown_tables(analysis_text)
+            
+            # Extract chart data from the analysis
+            analysis_text, chart_data = _extract_chart_data(analysis_text)
+                
+            logger.info(f"Final analysis length: {len(analysis_text)} chars, chart_data: {'yes' if chart_data else 'no'}")
+            
+            response = {
                 "status": "success",
                 "company": company,
                 "analysis": analysis_text,
                 "timestamp": datetime.now().isoformat()
             }
+            
+            if chart_data:
+                response["chart_data"] = chart_data
+            
+            return response
             
         except Exception as e:
             logger.error(f"Stock analysis failed: {str(e)}", exc_info=True)
@@ -137,3 +241,4 @@ class CrewService:
                 "message": str(e),
                 "timestamp": datetime.now().isoformat()
             }
+

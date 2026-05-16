@@ -113,3 +113,71 @@ async def query_document(request: QueryRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
+
+from fastapi.responses import StreamingResponse
+import json
+import asyncio
+
+@router.post("/query/stream")
+async def query_document_stream(request: QueryRequest):
+    """
+    Streaming SSE version of /query for the document (RAG) chat mode.
+    Yields chunks as Server-Sent Events: data: {"chunk": "..."}\n\n
+    """
+    try:
+        if not request.session_id:
+            raise HTTPException(status_code=400, detail="Session ID is required")
+        
+        # Lazy-init on first query
+        retriever_obj, llm = _get_rag_components()
+
+        # Retrieval
+        retrieved_docs = retriever_obj.retrieve(request.question, request.user_id, request.session_id)
+        
+        context_text = ""
+        sources = []
+        for d in retrieved_docs:
+            meta = d.metadata
+            source_str = f"[Doc: {meta.get('source', 'Unknown')} | Page: {meta.get('page', 'N/A')}]"
+            context_text += f"{source_str}\n{d.page_content}\n\n"
+            sources.append(source_str)
+            
+        async def generate():
+            if not context_text.strip():
+                yield f"data: {json.dumps({'chunk': 'The document does not provide this information.'})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+                
+            try:
+                # First send sources
+                sources_list = list(set(sources))
+                yield f"data: {json.dumps({'sources': sources_list})}\n\n"
+                
+                chain = FINRAG_PROMPT | llm
+                
+                # Stream chunks
+                for chunk in chain.stream({"context": context_text, "question": request.question}):
+                    content = chunk if isinstance(chunk, str) else chunk.content
+                    if content:
+                        yield f"data: {json.dumps({'chunk': content})}\n\n"
+                        await asyncio.sleep(0) # Flush
+                
+                yield "data: [DONE]\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                yield "data: [DONE]\n\n"
+
+        return StreamingResponse(
+            generate(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
+
