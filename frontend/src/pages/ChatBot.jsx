@@ -90,13 +90,18 @@ export default function ChatBot() {
     setMessages(prev => [...prev, { role: 'user', text: userMessage.trim() }]);
     setLoading(true);
 
+    const token = localStorage.getItem('token');
+
     // ── Document / RAG path — Streaming ────────────────────────────────────────
     if (sessionId) {
       setMessages(prev => [...prev, { role: 'assistant', text: '' }]);
       try {
         const response = await fetch('http://localhost:8000/api/rag/query/stream', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({ 
             question: userMessage.trim(), 
             user_id: USER_ID, 
@@ -177,7 +182,10 @@ export default function ChatBot() {
     try {
       const response = await fetch('http://localhost:8000/api/finance_rag/query/stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ 
           query: userMessage.trim(),
           chat_history: validHistory

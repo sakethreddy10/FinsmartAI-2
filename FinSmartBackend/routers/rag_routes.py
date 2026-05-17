@@ -6,8 +6,8 @@ import os
 import sys
 
 # Ensure FinRAG and Fin_Personal_Assitant are in path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../thiru_repo")))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../thiru_repo/FinRAG")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thiru_repo")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thiru_repo/FinRAG")))
 
 # Import FinRAG Logic
 from finrag.ingest_service import ingest_file
@@ -125,8 +125,11 @@ from fastapi.responses import StreamingResponse
 import json
 import asyncio
 
+from auth import get_current_user
+from fastapi import Depends
+
 @router.post("/query/stream")
-async def query_document_stream(request: QueryRequest):
+async def query_document_stream(request: QueryRequest, current_user: dict = Depends(get_current_user)):
     """
     Streaming SSE version of /query for the document (RAG) chat mode.
     Yields chunks as Server-Sent Events: data: {"chunk": "..."}\n\n

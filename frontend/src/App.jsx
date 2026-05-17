@@ -15,8 +15,13 @@ const navItems = [
   { path: '/stock',     label: 'Stock AI',  icon: BarChart3 },
 ];
 
+import { useAuth } from './context/AuthContext';
+import Login from './pages/Login';
+import { LogOut } from 'lucide-react';
+
 function Navbar({ theme, onToggle }) {
   const { pathname } = useLocation();
+  const { user, logout } = useAuth();
   const isDark = theme === 'dark';
 
   return (
@@ -46,7 +51,15 @@ function Navbar({ theme, onToggle }) {
         </div>
 
         {/* Right side controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* User profile / Logout */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.name}</span>
+            <button onClick={logout} style={{ background: 'none', border: 'none', color: 'var(--red-400)', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Logout">
+              <LogOut size={16} />
+            </button>
+          </div>
+
           {/* Live status */}
           <div className="nav-live">
             <span className="nav-live-dot" />
@@ -69,6 +82,7 @@ function Navbar({ theme, onToggle }) {
 }
 
 export default function App() {
+  const { user } = useAuth();
   // Read saved theme or default dark
   const [theme, setTheme] = useState(() => localStorage.getItem('fs-theme') || 'dark');
 
@@ -78,6 +92,10 @@ export default function App() {
   }, [theme]);
 
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
+
+  if (!user) {
+    return <Login />;
+  }
 
   return (
     <>

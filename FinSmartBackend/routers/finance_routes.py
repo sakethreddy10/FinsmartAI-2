@@ -7,8 +7,8 @@ import os
 
 
 # Ensure Fin_Personal_Assitant is in path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../thiru_repo")))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../thiru_repo/Fin_Personal_Assitant")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thiru_repo")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thiru_repo/Fin_Personal_Assitant")))
 
 # Import Finance Bot Logic
 try:
@@ -59,8 +59,11 @@ def _get_stream_client():
     return _stream_client
 
 
+from auth import get_current_user
+from fastapi import Depends
+
 @router.post("/query/stream")
-async def finance_query_stream(request: FinanceQueryRequest):
+async def finance_query_stream(request: FinanceQueryRequest, current_user: dict = Depends(get_current_user)):
     """
     Streaming SSE version of /query for the general finance chatbot.
     Yields chunks as Server-Sent Events: data: <chunk>\n\n
