@@ -80,8 +80,15 @@ async def query_document(request: QueryRequest):
         # Lazy-init on first query
         retriever_obj, llm = _get_rag_components()
 
+        # Format question with history
+        search_query = request.question
+        if request.chat_history:
+            history_str = "\n".join([f"{msg.get('role', 'user').capitalize()}: {msg.get('text', '')}" for msg in request.chat_history[-4:]])
+            if history_str:
+                search_query = f"Previous Conversation:\n{history_str}\n\nCurrent Question: {request.question}"
+
         # Retrieval
-        retrieved_docs = retriever_obj.retrieve(request.question, request.user_id, request.session_id)
+        retrieved_docs = retriever_obj.retrieve(search_query, request.user_id, request.session_id)
         
         context_text = ""
         sources = []
@@ -99,7 +106,7 @@ async def query_document(request: QueryRequest):
             
         # Generate Answer
         chain = FINRAG_PROMPT | llm
-        response = chain.invoke({"context": context_text, "question": request.question})
+        response = chain.invoke({"context": context_text, "question": search_query})
         
         final_answer = response if isinstance(response, str) else response.content
         final_answer = final_answer.replace("```markdown", "").replace("```", "").strip()
@@ -131,8 +138,15 @@ async def query_document_stream(request: QueryRequest):
         # Lazy-init on first query
         retriever_obj, llm = _get_rag_components()
 
+        # Format question with history
+        search_query = request.question
+        if request.chat_history:
+            history_str = "\n".join([f"{msg.get('role', 'user').capitalize()}: {msg.get('text', '')}" for msg in request.chat_history[-4:]])
+            if history_str:
+                search_query = f"Previous Conversation:\n{history_str}\n\nCurrent Question: {request.question}"
+
         # Retrieval
-        retrieved_docs = retriever_obj.retrieve(request.question, request.user_id, request.session_id)
+        retrieved_docs = retriever_obj.retrieve(search_query, request.user_id, request.session_id)
         
         context_text = ""
         sources = []
@@ -156,7 +170,7 @@ async def query_document_stream(request: QueryRequest):
                 chain = FINRAG_PROMPT | llm
                 
                 # Stream chunks
-                for chunk in chain.stream({"context": context_text, "question": request.question}):
+                for chunk in chain.stream({"context": context_text, "question": search_query}):
                     content = chunk if isinstance(chunk, str) else chunk.content
                     if content:
                         yield f"data: {json.dumps({'chunk': content})}\n\n"

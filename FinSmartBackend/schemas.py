@@ -17,6 +17,7 @@ class QueryRequest(BaseModel):
     session_id: str
     question: str
     user_id: Optional[str] = "default_user"
+    chat_history: Optional[List[Dict[str, str]]] = []
 
 class QueryResponse(BaseModel):
     answer: str
@@ -26,6 +27,7 @@ class QueryResponse(BaseModel):
 class FinanceQueryRequest(BaseModel):
     query: str
     user_id: Optional[str] = "user_default"
+    chat_history: Optional[List[Dict[str, str]]] = []
 
 class FinanceAnalysisResponse(BaseModel):
     type: str # "general_answer" | "financial_analysis" | "fallback"

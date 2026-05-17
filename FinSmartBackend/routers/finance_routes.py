@@ -70,27 +70,38 @@ async def finance_query_stream(request: FinanceQueryRequest):
         import asyncio
         try:
             client = _get_stream_client()
+            
+            # Build messages array starting with system prompt
+            messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are FinSmart AI — a smart, friendly Indian personal finance assistant. "
+                        "You talk like a knowledgeable friend, not a textbook or a formal advisor. "
+                        "\n\nHow to respond:"
+                        "\n- Start with a short, plain-language answer (1-2 sentences max)."
+                        "\n- Then give structured details using bullet points or numbered steps."
+                        "\n- Use real Indian examples: SIP, PPF, ELSS, FD, EPF, CIBIL, UPI, Zerodha, Groww, etc."
+                        "\n- Use ₹ for currency. Keep numbers relatable (e.g., ₹5,000/month SIP)."
+                        "\n- If a concept is complex, break it into simple numbered steps."
+                        "\n- Use clean markdown: **bold** for key terms, `code` for numbers/formulas, > for tips."
+                        "\n- Never write walls of text — keep paragraphs short."
+                        "\n- If you don't know something specific, say so honestly and suggest where to look."
+                    )
+                }
+            ]
+            
+            # Append chat history (max 4 messages)
+            if request.chat_history:
+                for msg in request.chat_history[-4:]:
+                    messages.append({"role": msg.get("role", "user"), "content": msg.get("text", "")})
+            
+            # Append current query
+            messages.append({"role": "user", "content": request.query})
+
             stream = client.chat.completions.create(
                 model="meta/llama-3.3-70b-instruct",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are FinSmart AI — a smart, friendly Indian personal finance assistant. "
-                            "You talk like a knowledgeable friend, not a textbook or a formal advisor. "
-                            "\n\nHow to respond:"
-                            "\n- Start with a short, plain-language answer (1-2 sentences max)."
-                            "\n- Then give structured details using bullet points or numbered steps."
-                            "\n- Use real Indian examples: SIP, PPF, ELSS, FD, EPF, CIBIL, UPI, Zerodha, Groww, etc."
-                            "\n- Use ₹ for currency. Keep numbers relatable (e.g., ₹5,000/month SIP)."
-                            "\n- If a concept is complex, break it into simple numbered steps."
-                            "\n- Use clean markdown: **bold** for key terms, `code` for numbers/formulas, > for tips."
-                            "\n- Never write walls of text — keep paragraphs short."
-                            "\n- If you don't know something specific, say so honestly and suggest where to look."
-                        )
-                    },
-                    {"role": "user", "content": request.query}
-                ],
+                messages=messages,
                 temperature=0.3,
                 max_tokens=1024,
                 top_p=0.95,

@@ -81,6 +81,12 @@ export default function ChatBot() {
   const sendMessage = async (userMessage) => {
     if (!userMessage.trim()) return;
     setInput('');
+    
+    // Compute chat history from existing messages
+    const validHistory = messages
+      .filter(m => (m.role === 'user' || m.role === 'assistant') && m.text)
+      .map(m => ({ role: m.role, text: m.text }));
+
     setMessages(prev => [...prev, { role: 'user', text: userMessage.trim() }]);
     setLoading(true);
 
@@ -91,7 +97,12 @@ export default function ChatBot() {
         const response = await fetch('http://localhost:8000/api/rag/query/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question: userMessage.trim(), user_id: USER_ID, session_id: sessionId }),
+          body: JSON.stringify({ 
+            question: userMessage.trim(), 
+            user_id: USER_ID, 
+            session_id: sessionId,
+            chat_history: validHistory
+          }),
         });
 
         if (!response.ok) throw new Error(`Server error: ${response.status}`);
@@ -124,12 +135,6 @@ export default function ChatBot() {
                 break;
               }
               if (parsed.sources) {
-                // Append sources at the end or keep them in state, for simplicity append directly to text later if needed,
-                // but let's just append them to the text right away or wait till stream ends.
-                // Actually, let's append it at the end of the text. Wait, sources come first. 
-                // Let's just append them to a local variable and append them when stream finishes, or just directly to text.
-                // Or better, ignore sources for now to keep it simple and clean.
-                // We'll append sources at the end:
                 setMessages(prev => {
                   const msgs = [...prev];
                   const last = msgs[msgs.length - 1];
@@ -173,7 +178,10 @@ export default function ChatBot() {
       const response = await fetch('http://localhost:8000/api/finance_rag/query/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: userMessage.trim() }),
+        body: JSON.stringify({ 
+          query: userMessage.trim(),
+          chat_history: validHistory
+        }),
       });
 
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
