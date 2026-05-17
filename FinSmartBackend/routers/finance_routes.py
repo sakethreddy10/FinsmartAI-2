@@ -7,8 +7,8 @@ import os
 
 
 # Ensure Fin_Personal_Assitant is in path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thiru_repo")))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thiru_repo/Fin_Personal_Assitant")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../thiru_repo")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../thiru_repo/Fin_Personal_Assitant")))
 
 # Import Finance Bot Logic
 try:

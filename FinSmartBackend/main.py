@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # then FinRAG/.env as fallback for any extras. override=False means
 # the first-loaded value wins, so local .env takes priority.
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
-load_dotenv(os.path.join(os.path.dirname(__file__), "../thiru_repo/FinRAG/.env"), override=False)
+load_dotenv(os.path.join(os.path.dirname(__file__), "thiru_repo/FinRAG/.env"), override=False)
 
 # Import Routers AFTER loading env
 from routers import rag_routes, finance_routes, sentiment_routes, budget_routes, portfolio_routes

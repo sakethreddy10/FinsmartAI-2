@@ -6,8 +6,8 @@ import os
 import sys
 
 # Ensure FinRAG and Fin_Personal_Assitant are in path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thiru_repo")))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../thiru_repo/FinRAG")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../thiru_repo")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../thiru_repo/FinRAG")))
 
 # Import FinRAG Logic
 from finrag.ingest_service import ingest_file
