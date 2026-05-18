@@ -107,12 +107,12 @@ export default function Login() {
           )}
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>Username</label>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>Email Address</label>
             <div style={{ position: 'relative' }}>
               <Mail size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
-                type="text" className="input-control" required
-                placeholder="johndoe123"
+                type="email" className="input-control" required
+                placeholder="name@example.com"
                 value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })}
                 style={{ paddingLeft: '2.5rem' }}
               />
